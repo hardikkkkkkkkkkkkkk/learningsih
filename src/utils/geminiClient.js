@@ -1,8 +1,8 @@
 /**
  * Gemini AI Client — NHAA SIH26093
  *
- * Migrated to backend processing via /api/chat
- * No API key logic exists here anymore.
+ * Production client for the Netlify Functions backend.
+ * The API key is sent only to the backend and is never bundled by Vite.
  */
 
 export function validateKeyFormat(key) {
@@ -13,7 +13,6 @@ export function validateKeyFormat(key) {
 }
 
 export async function callGeminiAI(messages, language, apiKey, assessment) {
-  // Build conversation history
   const history = messages
     .filter(m => m.id !== 'init' && !m.id.startsWith('sys-err'))
     .map(m => ({
@@ -23,7 +22,6 @@ export async function callGeminiAI(messages, language, apiKey, assessment) {
 
   if (history.length === 0 || history[history.length - 1].role !== 'user') return null;
 
-  // Silently inject triage context into the last user turn so Gemini has memory of the current state
   if (assessment?.svi > 15) {
     const indicators = assessment.detectedIndicators?.map(i => i.name).join(', ') || 'none';
     const lastUser = [...history].reverse().find(m => m.role === 'user');
@@ -33,53 +31,51 @@ export async function callGeminiAI(messages, language, apiKey, assessment) {
     }
   }
 
-  // Use AbortController for fetch timeout (prevent infinite loading on the frontend)
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 16000); // 16s frontend timeout (backend has 15s)
+  const timeoutId = setTimeout(() => controller.abort(), 9500);
 
   try {
     const res = await fetch('/api/chat', {
       method: 'POST',
-      headers: { 
+      headers: {
         'Content-Type': 'application/json',
-        'x-api-key': apiKey || ''
+        ...(apiKey ? { 'x-api-key': apiKey } : {})
       },
-      body: JSON.stringify({
-        history,
-        language
-      }),
+      body: JSON.stringify({ history, language }),
       signal: controller.signal
     });
 
-    clearTimeout(timeoutId);
-
-    const data = await res.json();
+    const data = await res.json().catch(() => ({}));
 
     if (!res.ok) {
-      throw new Error(data.error || 'SERVER_ERROR');
+      const error = new Error(data.error || 'SERVER_ERROR');
+      error.code = data.error || 'SERVER_ERROR';
+      error.details = data.message || '';
+      throw error;
     }
 
     if (!data.message || data.message.trim() === '') {
-      throw new Error('EMPTY_RESPONSE');
+      throw Object.assign(new Error('EMPTY_RESPONSE'), { code: 'EMPTY_RESPONSE' });
     }
 
-    // Return the full structured payload
-    return data; 
+    return data;
   } catch (err) {
-    clearTimeout(timeoutId);
     if (err.name === 'AbortError') {
-      throw new Error('TIMEOUT');
+      throw Object.assign(new Error('TIMEOUT'), { code: 'TIMEOUT' });
     }
     throw err;
+  } finally {
+    clearTimeout(timeoutId);
   }
 }
 
-export async function checkGeminiHealth() {
+export async function checkGeminiHealth(apiKey = '') {
   try {
-    const res = await fetch('/api/gemini-health');
-    const data = await res.json();
-    return data;
-  } catch (err) {
+    const res = await fetch('/api/gemini-health', {
+      headers: apiKey ? { 'x-api-key': apiKey } : {}
+    });
+    return await res.json();
+  } catch {
     return { geminiConfigured: false, connection: 'network_error' };
   }
 }
