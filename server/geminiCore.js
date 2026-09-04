@@ -1,10 +1,9 @@
 import { GoogleGenAI, Type } from '@google/genai';
 
-export const MODEL_NAME = 'gemini-3.1-flash-lite';
+// Stable GA model designed for fast, high-volume requests.
+export const MODEL_NAME = 'gemini-3.5-flash-lite';
 
-export const buildSystemPrompt = (language) => `You are NHAA's calm, emotionally intelligent, trauma-informed support assistant for India. You are not a doctor or therapist. Listen first, validate without pretending to feel, never diagnose, never force positivity, and ask only one useful question at a time. Match the user's tone, including Hinglish and messy informal messages. If there is immediate danger, self-harm, or active violence, switch to safety-focused guidance and recommend human intervention such as 112, 1091, 181, or iCall 9152987821. Never claim you called anyone. Give the user control over whether to talk, plan next steps, or pause. Reply primarily in ${language === 'hi' ? 'Hindi/Hinglish' : 'English'} and sound natural, warm, and human.
-
-Return the requested structured response.`;
+export const buildSystemPrompt = (language) => `You are NHAA's calm, emotionally intelligent, trauma-informed support assistant for India. You are not a doctor or therapist. Listen first, validate without pretending to feel, never diagnose, never force positivity, and ask only one useful question at a time. Match the user's tone, including Hinglish and informal messages. If there is immediate danger, self-harm, or active violence, switch to safety-focused guidance and recommend human intervention such as 112, 1091, 181, or iCall 9152987821. Never claim you called anyone. Give the user control over whether to talk, plan next steps, or pause. Reply primarily in ${language === 'hi' ? 'Hindi/Hinglish' : 'English'} and sound natural, warm, and human. Return the requested structured response.`;
 
 export const responseSchema = {
   type: Type.OBJECT,
@@ -36,7 +35,8 @@ function classifyError(error) {
   const status = Number(error?.status || 0);
   const message = String(error?.message || error || '').toLowerCase();
   if (status === 401 || status === 403 || message.includes('api key') || message.includes('permission_denied') || message.includes('unauthenticated')) return 'AUTHENTICATION_ERROR';
-  if (status === 429 || message.includes('resource_exhausted') || message.includes('quota')) return 'QUOTA_EXCEEDED';
+  if (status === 429 || message.includes('resource_exhausted') || message.includes('quota') || message.includes('rate limit')) return 'QUOTA_EXCEEDED';
+  if (status === 400 || message.includes('invalid argument') || message.includes('invalid_argument')) return 'INVALID_REQUEST';
   if (status === 404 || message.includes('not found')) return 'MODEL_NOT_FOUND';
   if (status === 503 || message.includes('overloaded')) return 'OVERLOADED';
   if (message.includes('timeout') || message.includes('timed out')) return 'TIMEOUT';
@@ -49,7 +49,7 @@ const timeout = (promise, ms) => Promise.race([
 ]);
 
 export async function checkHealth(apiKey) {
-  if (!apiKey) return { geminiConfigured: false, connection: 'error', errorCode: 'AUTHENTICATION_ERROR' };
+  if (!apiKey) return { geminiConfigured: false, connection: 'error', errorCode: 'AUTHENTICATION_ERROR', errorMessage: 'No Gemini API key was supplied.' };
   const ai = new GoogleGenAI({ apiKey });
   try {
     await timeout(ai.models.generateContent({ model: MODEL_NAME, contents: 'Reply with OK.' }), 4500);
@@ -76,7 +76,6 @@ export async function runChat({ apiKey, history, language, maxRetries = 1 }) {
         contents: formattedHistory,
         config: {
           systemInstruction: buildSystemPrompt(language || 'en'),
-          temperature: 0.7,
           maxOutputTokens: 500,
           responseMimeType: 'application/json',
           responseSchema
@@ -95,7 +94,7 @@ export async function runChat({ apiKey, history, language, maxRetries = 1 }) {
       const finalCode = ['EMPTY_RESPONSE','MALFORMED_RESPONSE'].includes(error.message) ? error.message : code;
       const err = new Error(error.message || finalCode);
       err.code = finalCode;
-      err.status = error.status || (finalCode === 'AUTHENTICATION_ERROR' ? 401 : finalCode === 'QUOTA_EXCEEDED' ? 429 : 500);
+      err.status = error.status || (finalCode === 'AUTHENTICATION_ERROR' ? 401 : finalCode === 'QUOTA_EXCEEDED' ? 429 : finalCode === 'INVALID_REQUEST' ? 400 : 500);
       throw err;
     }
   }
