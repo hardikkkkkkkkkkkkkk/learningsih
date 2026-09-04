@@ -1,6 +1,7 @@
 import { GoogleGenAI, Type } from '@google/genai';
 
-export const MODEL_NAME = 'gemini-3.5-flash';
+// Fast, low-cost model with a free tier and structured-output support.
+export const MODEL_NAME = 'gemini-3.5-flash-lite';
 
 export const buildSystemPrompt = (language) => `
 ROLE:
@@ -34,15 +35,8 @@ You must reply primarily in ${language === 'hi' ? 'Hindi/Hinglish' : 'English'},
 export const responseSchema = {
   type: Type.OBJECT,
   properties: {
-    message: {
-      type: Type.STRING,
-      description: "The actual conversational response shown to the user. Must be empathetic, non-diagnostic, and helpful."
-    },
-    intent: {
-      type: Type.STRING,
-      enum: ["support", "clarify", "safety_check", "practical_help", "escalation"],
-      description: "The primary conversational intent of your message."
-    },
+    message: { type: Type.STRING, description: "The actual conversational response shown to the user. Must be empathetic, non-diagnostic, and helpful." },
+    intent: { type: Type.STRING, enum: ["support", "clarify", "safety_check", "practical_help", "escalation"], description: "The primary conversational intent of your message." },
     emotionSignals: {
       type: Type.OBJECT,
       properties: {
@@ -50,7 +44,8 @@ export const responseSchema = {
         anxiety: { type: Type.INTEGER, description: "0-10 scale" },
         distress: { type: Type.INTEGER, description: "0-10 scale" },
         sadness: { type: Type.INTEGER, description: "0-10 scale" }
-      }
+      },
+      required: ["fear", "anxiety", "distress", "sadness"]
     },
     safety: {
       type: Type.OBJECT,
@@ -58,7 +53,8 @@ export const responseSchema = {
         level: { type: Type.STRING, enum: ["none", "elevated", "urgent", "critical"] },
         immediateDanger: { type: Type.BOOLEAN },
         humanReviewRecommended: { type: Type.BOOLEAN }
-      }
+      },
+      required: ["level", "immediateDanger", "humanReviewRecommended"]
     }
   },
   required: ["message", "intent", "emotionSignals", "safety"]
@@ -67,10 +63,12 @@ export const responseSchema = {
 const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
 
 function classifyError(error) {
-  if (error.status === 401 || error.status === 403) return 'AUTHENTICATION_ERROR';
-  if (error.status === 429) return 'QUOTA_EXCEEDED';
-  if (error.status === 404) return 'MODEL_NOT_FOUND';
-  if (error.status === 503) return 'OVERLOADED';
+  const status = error?.status || error?.code;
+  const message = String(error?.message || error || '').toLowerCase();
+  if (status === 401 || status === 403 || message.includes('api key') || message.includes('permission_denied')) return 'AUTHENTICATION_ERROR';
+  if (status === 429 || message.includes('resource_exhausted') || message.includes('quota')) return 'QUOTA_EXCEEDED';
+  if (status === 404 || message.includes('not found')) return 'MODEL_NOT_FOUND';
+  if (status === 503 || message.includes('overloaded')) return 'OVERLOADED';
   return 'SERVER_ERROR';
 }
 
@@ -96,16 +94,9 @@ export async function checkHealth(apiKey) {
   }
 }
 
-/**
- * Runs one chat turn against Gemini, with a small retry budget.
- * maxRetries/perAttemptTimeoutMs are tunable because Netlify's free-tier
- * synchronous functions hard-kill at 10s — we want to fail fast there,
- * whereas a normal long-lived Node server (Render/Railway/local) can afford
- * the original, more patient retry budget.
- */
-export async function runChat({ apiKey, history, language, maxRetries = 2, perAttemptTimeoutMs = 15000 }) {
+export async function runChat({ apiKey, history, language, maxRetries = 1, perAttemptTimeoutMs = 8000 }) {
   if (!apiKey) {
-    const err = new Error('API Key missing.');
+    const err = new Error('API Key missing. Add GEMINI_API_KEY in Netlify or enter a key in the app.');
     err.status = 401;
     err.code = 'AUTHENTICATION_ERROR';
     throw err;
@@ -122,9 +113,6 @@ export async function runChat({ apiKey, history, language, maxRetries = 2, perAt
 
   while (attempt <= maxRetries) {
     try {
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), perAttemptTimeoutMs);
-
       const response = await ai.models.generateContent({
         model: MODEL_NAME,
         contents: formattedHistory,
@@ -132,13 +120,11 @@ export async function runChat({ apiKey, history, language, maxRetries = 2, perAt
           systemInstruction: buildSystemPrompt(language || 'en'),
           temperature: 0.75,
           topP: 0.9,
-          maxOutputTokens: 800,
+          maxOutputTokens: 600,
           responseMimeType: "application/json",
           responseSchema,
         },
       });
-
-      clearTimeout(timeoutId);
 
       const text = response.text;
       if (!text || text.trim() === '') throw new Error('EMPTY_RESPONSE');
@@ -146,7 +132,7 @@ export async function runChat({ apiKey, history, language, maxRetries = 2, perAt
       let parsed;
       try {
         parsed = JSON.parse(text);
-      } catch (e) {
+      } catch {
         throw new Error('MALFORMED_RESPONSE');
       }
 
@@ -160,20 +146,21 @@ export async function runChat({ apiKey, history, language, maxRetries = 2, perAt
       };
     } catch (error) {
       lastError = error;
-      const isTimeout = error.name === 'AbortError' || (error.message && error.message.includes('timeout'));
-      const isOverloaded = error.status === 503 || error.status === 500;
-      const isEmpty = error.message === 'EMPTY_RESPONSE' || error.message === 'MALFORMED_RESPONSE';
+      const code = classifyError(error);
+      const isTransient = code === 'OVERLOADED' || code === 'SERVER_ERROR' || error.message === 'EMPTY_RESPONSE' || error.message === 'MALFORMED_RESPONSE';
 
-      if ((isTimeout || isOverloaded || isEmpty) && attempt < maxRetries) {
+      if (isTransient && attempt < maxRetries) {
         attempt++;
-        await delay(attempt * 800);
+        await delay(attempt * 500);
         continue;
       }
 
-      const code = isTimeout ? 'TIMEOUT' : isEmpty ? error.message : classifyError(error);
-      const err = new Error(error.message || code);
-      err.status = error.status || 500;
-      err.code = code;
+      const finalCode = error.message === 'EMPTY_RESPONSE' || error.message === 'MALFORMED_RESPONSE'
+        ? error.message
+        : code;
+      const err = new Error(error.message || finalCode);
+      err.status = error.status || (finalCode === 'AUTHENTICATION_ERROR' ? 401 : finalCode === 'QUOTA_EXCEEDED' ? 429 : 500);
+      err.code = finalCode;
       throw err;
     }
   }
