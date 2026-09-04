@@ -17,18 +17,17 @@ export const handler = async (event) => {
     return { statusCode: 400, body: JSON.stringify({ error: 'BAD_REQUEST', message: 'Invalid history payload' }) };
   }
 
-  // Netlify header keys arrive lowercased.
-  const dynamicApiKey = event.headers['x-api-key'] || process.env.GEMINI_API_KEY;
+  const headers = event.headers || {};
+  const dynamicApiKey = headers['x-api-key'] || headers['X-API-Key'] || process.env.GEMINI_API_KEY;
 
   try {
-    // Netlify's free-tier synchronous functions are killed at 10s, so we use
-    // a shorter, tighter retry budget here than a normal Node server would.
+    // One bounded attempt keeps the whole request safely inside Netlify's
+    // synchronous function window. The core timeout is 7.5s.
     const result = await runChat({
       apiKey: dynamicApiKey,
       history,
       language,
-      maxRetries: 1,
-      perAttemptTimeoutMs: 8000,
+      maxRetries: 0,
     });
 
     return {
@@ -40,7 +39,10 @@ export const handler = async (event) => {
     return {
       statusCode: error.status || 500,
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ error: error.code || 'SERVER_ERROR', message: error.message }),
+      body: JSON.stringify({
+        error: error.code || 'SERVER_ERROR',
+        message: error.message || 'Gemini request failed',
+      }),
     };
   }
 };
