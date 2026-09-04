@@ -16,12 +16,12 @@ function classifyError(error) {
 }
 
 function safeErrorDetails(error) {
-  return String(error?.message || error || 'Unknown Gemini error').replace(/AIza[\\w-]+/g, '[REDACTED_KEY]').slice(0, 500);
+  return String(error?.message || error || 'Unknown Gemini error').replace(/AIza[\w-]+/g, '[REDACTED_KEY]').slice(0, 500);
 }
 
 async function geminiRequest(apiKey, contents, systemInstruction) {
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), 7500);
+  const timer = setTimeout(() => controller.abort(), 30000);
   try {
     const url = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL_NAME}:generateContent?key=${encodeURIComponent(apiKey)}`;
     const response = await fetch(url, {
@@ -66,7 +66,7 @@ export async function checkHealth(apiKey) {
 }
 
 function parseModelJson(text) {
-  const cleaned = String(text || '').trim().replace(/^```json\\s*/i, '').replace(/^```\\s*/i, '').replace(/\\s*```$/i, '').trim();
+  const cleaned = String(text || '').trim().replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/\s*```$/i, '').trim();
   try { return JSON.parse(cleaned); } catch {}
   const start = cleaned.indexOf('{');
   const end = cleaned.lastIndexOf('}');
