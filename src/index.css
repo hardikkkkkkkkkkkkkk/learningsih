@@ -1,0 +1,261 @@
+@import "tailwindcss";
+
+/* ════════════════════════════════════════════════
+   NHAA SIH26093  ·  Premium Design System
+   Single-page, professional, trustworthy
+   ════════════════════════════════════════════════ */
+
+:root {
+  /* Palette */
+  --navy:        #0B1E3D;
+  --navy-mid:    #112654;
+  --blue:        #1B4FBD;
+  --blue-lt:     #E8EFFD;
+  --bg:          #F7F8FA;
+  --surface:     #FFFFFF;
+  --border:      #E5E7EB;
+  --border-lt:   #F3F4F6;
+
+  /* Text */
+  --text-1: #111827;
+  --text-2: #374151;
+  --text-3: #6B7280;
+  --text-4: #9CA3AF;
+
+  /* Semantic */
+  --low:      #059669;
+  --low-bg:   #ECFDF5;
+  --low-bd:   #A7F3D0;
+
+  --mod:      #B45309;
+  --mod-bg:   #FFFBEB;
+  --mod-bd:   #FDE68A;
+
+  --high:     #C2410C;
+  --high-bg:  #FFF7ED;
+  --high-bd:  #FED7AA;
+
+  --crit:     #991B1B;
+  --crit-bg:  #FEF2F2;
+  --crit-bd:  #FECACA;
+
+  /* Shadows */
+  --shadow-xs: 0 1px 2px rgba(0,0,0,0.05);
+  --shadow-sm: 0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.04);
+  --shadow-md: 0 4px 12px rgba(0,0,0,0.08), 0 2px 4px rgba(0,0,0,0.04);
+}
+
+/* ─── Reset ─── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html { scroll-behavior: smooth; }
+
+body {
+  background: var(--bg);
+  color: var(--text-1);
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-size: 14px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ─── Scrollbar ─── */
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #D1D5DB; border-radius: 4px; }
+
+/* ─── Card ─── */
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  box-shadow: var(--shadow-sm);
+}
+
+/* ─── Section label ─── */
+.section-label {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-4);
+}
+
+/* ─── Chat bubbles ─── */
+.msg-assistant {
+  background: #FFFFFF;
+  border: 1px solid var(--border);
+  border-radius: 0 14px 14px 14px;
+  box-shadow: var(--shadow-xs);
+  color: var(--text-1);
+}
+.msg-victim {
+  background: var(--navy);
+  border-radius: 14px 0 14px 14px;
+  color: #FFFFFF;
+}
+
+/* ─── Input ─── */
+.field {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+  color: var(--text-1);
+  transition: border-color .15s, box-shadow .15s;
+  outline: none;
+}
+.field:focus {
+  border-color: var(--blue);
+  box-shadow: 0 0 0 3px rgba(27,79,189,0.10);
+}
+
+/* ─── Buttons ─── */
+.btn-primary {
+  background: var(--navy);
+  color: #fff;
+  border: none;
+  border-radius: 9px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background .15s, transform .1s;
+}
+.btn-primary:hover  { background: var(--navy-mid); }
+.btn-primary:active { transform: scale(0.97); }
+.btn-primary:disabled { opacity: 0.45; cursor: not-allowed; }
+
+.btn-ghost {
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text-3);
+  cursor: pointer;
+  transition: background .15s, color .15s, border-color .15s;
+}
+.btn-ghost:hover { background: var(--border-lt); color: var(--text-2); border-color: #D1D5DB; }
+
+.btn-icon {
+  display: flex; align-items: center; justify-content: center;
+  width: 36px; height: 36px;
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text-3);
+  cursor: pointer;
+  transition: all .15s;
+}
+.btn-icon:hover { background: var(--border-lt); color: var(--text-2); }
+
+/* ─── Risk pills ─── */
+.risk-pill {
+  display: inline-flex; align-items: center; gap: 5px;
+  font-size: 11px; font-weight: 700; letter-spacing: .04em;
+  text-transform: uppercase;
+  padding: 3px 10px;
+  border-radius: 99px;
+  border: 1px solid transparent;
+}
+.risk-LOW      { background: var(--low-bg);  color: var(--low);  border-color: var(--low-bd); }
+.risk-MODERATE { background: var(--mod-bg);  color: var(--mod);  border-color: var(--mod-bd); }
+.risk-HIGH     { background: var(--high-bg); color: var(--high); border-color: var(--high-bd); }
+.risk-CRITICAL { background: var(--crit-bg); color: var(--crit); border-color: var(--crit-bd); }
+
+/* ─── Indicator chip ─── */
+.ind-chip {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-size: 11px; font-weight: 500;
+  padding: 4px 10px;
+  border-radius: 7px;
+  border: 1px solid transparent;
+}
+
+/* ─── Emotion bar ─── */
+.ebar-track {
+  height: 5px;
+  background: var(--border-lt);
+  border-radius: 99px;
+  overflow: hidden;
+}
+.ebar-fill {
+  height: 100%;
+  border-radius: 99px;
+  transition: width .65s cubic-bezier(.4,0,.2,1);
+}
+
+/* ─── Animations ─── */
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.3; }
+}
+@keyframes wavebar {
+  0%, 100% { transform: scaleY(0.4); }
+  50%       { transform: scaleY(1); }
+}
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+@keyframes pulseOnline {
+  0%,100% { box-shadow: 0 0 0 0 rgba(5,150,105,0.4); }
+  50%      { box-shadow: 0 0 0 5px rgba(5,150,105,0); }
+}
+
+.anim-up      { animation: fadeUp .25s ease-out both; }
+.anim-in      { animation: fadeIn .2s ease-out both; }
+.anim-blink   { animation: blink 1.4s ease-in-out infinite; }
+.anim-spin    { animation: spin  1s linear infinite; }
+.anim-online  { animation: pulseOnline 2.5s ease-in-out infinite; }
+
+.wave-bar {
+  display: inline-block;
+  width: 3px;
+  height: 14px;
+  border-radius: 2px;
+  background: currentColor;
+  transform-origin: bottom;
+}
+.w1 { animation: wavebar .8s ease-in-out infinite; }
+.w2 { animation: wavebar .8s ease-in-out infinite .15s; }
+.w3 { animation: wavebar .8s ease-in-out infinite .3s; }
+
+/* ─── Arc gauge (SVG) ─── */
+.arc-track { transition: stroke-dashoffset .75s cubic-bezier(.4,0,.2,1), stroke .5s ease; }
+
+/* ─── Typing dots ─── */
+.dot { display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: var(--text-4); }
+.dot:nth-child(1) { animation: blink 1.2s .0s infinite; }
+.dot:nth-child(2) { animation: blink 1.2s .2s infinite; }
+.dot:nth-child(3) { animation: blink 1.2s .4s infinite; }
+
+/* ─── Divider ─── */
+hr.rule { border: none; border-top: 1px solid var(--border-lt); }
+
+/* ─── Tooltip ─── */
+[data-tip] { position: relative; }
+[data-tip]::after {
+  content: attr(data-tip);
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--text-1);
+  color: #fff;
+  font-size: 11px;
+  padding: 4px 8px;
+  border-radius: 6px;
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity .15s;
+  z-index: 100;
+}
+[data-tip]:hover::after { opacity: 1; }
+
+/* ─── Transition ─── */
+.transition-all { transition: all .2s ease; }
