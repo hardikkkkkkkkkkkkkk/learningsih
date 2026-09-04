@@ -1,7 +1,7 @@
 import { GoogleGenAI, Type } from '@google/genai';
 
-// Fast, low-cost model with a free tier and structured-output support.
-export const MODEL_NAME = 'gemini-3.5-flash-lite';
+// Stable, low-cost model with free-tier access and structured-output support.
+export const MODEL_NAME = 'gemini-3.1-flash-lite';
 
 export const buildSystemPrompt = (language) => `
 ROLE:
@@ -94,7 +94,7 @@ export async function checkHealth(apiKey) {
   }
 }
 
-export async function runChat({ apiKey, history, language, maxRetries = 1, perAttemptTimeoutMs = 8000 }) {
+export async function runChat({ apiKey, history, language, maxRetries = 1 }) {
   if (!apiKey) {
     const err = new Error('API Key missing. Add GEMINI_API_KEY in Netlify or enter a key in the app.');
     err.status = 401;
@@ -151,7 +151,7 @@ export async function runChat({ apiKey, history, language, maxRetries = 1, perAt
 
       if (isTransient && attempt < maxRetries) {
         attempt++;
-        await delay(attempt * 500);
+        await delay(300);
         continue;
       }
 
