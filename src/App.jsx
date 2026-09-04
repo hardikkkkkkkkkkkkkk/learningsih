@@ -47,14 +47,12 @@ export default function App() {
     localStorage.setItem('nhaa_gemini_key', apiKey);
   }, [apiKey]);
 
-  // Check the configured key on startup.
   useEffect(() => {
     checkGeminiHealth(apiKeyRef.current).then(status => {
       setGeminiHealth({ checked: true, ok: status.geminiConfigured && status.connection === 'ok' });
     });
   }, []);
 
-  // Validate a newly entered key against the same backend endpoint used by chat.
   useEffect(() => {
     if (!apiKey) return;
     let cancelled = false;
@@ -101,8 +99,6 @@ export default function App() {
           setGeminiHealth({ checked: true, ok: false });
         }
 
-        // Never leave the complainant with a dead chat. Use the tested deterministic
-        // trauma-informed responder whenever Gemini is unavailable.
         const lastUserText = [...msgs].reverse().find(m => m.sender === 'victim')?.text || '';
         const fallbackText = generateTraumaInformedResponse(lastUserText, assess, language);
         setMessages(curr => [...curr, {
@@ -114,7 +110,6 @@ export default function App() {
         }]);
         responded = true;
 
-        // Keep the actual failure visible to the operator, not to the complainant.
         setAiErr(code === 'AUTHENTICATION_ERROR'
           ? 'Gemini API key rejected. Check the key/project in Google AI Studio.'
           : code === 'QUOTA_EXCEEDED'
@@ -193,15 +188,15 @@ export default function App() {
   }, []);
 
   return (
-    <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', background: 'var(--bg)' }}>
+    <div className="nhaa-shell" style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', background: 'var(--bg)' }}>
       <Navbar language={lang} onToggleLanguage={handleLang} onResetSession={handleReset} caseId={caseId} />
-      <main style={{ flex: 1, maxWidth: 1440, width: '100%', margin: '0 auto', padding: '20px 24px', display: 'flex', flexDirection: 'column' }}>
+      <main className="nhaa-main" style={{ flex: 1, maxWidth: 1440, width: '100%', margin: '0 auto', padding: '22px 24px', display: 'flex', flexDirection: 'column' }}>
         {(!geminiHealth.ok || apiKey) && (
           <ApiKeyPrompt apiKey={apiKey} onSetKey={setApiKey} language={lang} />
         )}
         <DemoSelector currentScenarioId={scenarioId} onSelectScenario={handleScenario} language={lang} />
-        <div style={{ display: 'grid', gridTemplateColumns: '5fr 7fr', gap: 16, alignItems: 'start' }}>
-          <div style={{ position: 'sticky', top: 80, height: 'calc(100vh - 290px)', minHeight: 560 }}>
+        <div className="nhaa-workspace" style={{ display: 'grid', gridTemplateColumns: '5fr 7fr', gap: 18, alignItems: 'start' }}>
+          <div className="nhaa-chat-wrap" style={{ position: 'sticky', top: 80, height: 'calc(100vh - 300px)', minHeight: 560 }}>
             <ChatPanel
               messages={messages}
               onSendMessage={handleSend}
@@ -214,20 +209,30 @@ export default function App() {
               aiError={aiError}
             />
           </div>
-          <div style={{ paddingBottom: 24 }}>
+          <div className="nhaa-assessment-wrap" style={{ paddingBottom: 24 }}>
             <AssessmentPanel assessment={assessment} caseId={caseId} messages={messages} language={lang} />
           </div>
         </div>
       </main>
       <PrivacyFooter language={lang} />
       <style>{`
-        @media (max-width: 900px) {
-          main > div:last-child { grid-template-columns: 1fr !important; }
-          main > div:last-child > div:first-child { position: static !important; height: 500px !important; }
+        .nhaa-shell { background-image: radial-gradient(circle at 15% 12%, rgba(27,79,189,.055), transparent 25%), radial-gradient(circle at 88% 20%, rgba(14,165,233,.04), transparent 22%); }
+        .nhaa-workspace > * { min-width: 0; }
+        @media (max-width: 1100px) {
+          .nhaa-main { padding-left: 16px !important; padding-right: 16px !important; }
+          .nhaa-workspace { grid-template-columns: 1fr !important; }
+          .nhaa-chat-wrap { position: relative !important; height: 620px !important; }
+          .nhaa-assessment-wrap { padding-bottom: 20px !important; }
         }
-        @media (max-width: 600px) {
-          main { padding: 10px !important; }
+        @media (max-width: 700px) {
+          .nhaa-main { padding: 10px !important; }
+          .nhaa-chat-wrap { height: 600px !important; }
           .hide-sm { display: none !important; }
+        }
+        @media (max-width: 480px) {
+          .nhaa-main { padding: 8px !important; }
+          .nhaa-chat-wrap { height: calc(100dvh - 150px) !important; min-height: 500px !important; max-height: 680px; }
+          .nhaa-workspace { gap: 12px !important; }
         }
       `}</style>
     </div>
