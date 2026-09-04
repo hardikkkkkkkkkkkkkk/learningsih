@@ -1,8 +1,6 @@
 import { checkHealth } from '../../server/geminiCore.js';
 
 export const handler = async (event) => {
-  // Prefer a key supplied by the app, then fall back to the secure Netlify env var.
-  // This lets the UI's API-key test the exact key that chat will use.
   const headers = event.headers || {};
   const apiKey = headers['x-api-key'] || headers['X-API-Key'] || process.env.GEMINI_API_KEY;
 
